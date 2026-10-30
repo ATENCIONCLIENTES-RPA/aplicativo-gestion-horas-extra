@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="clockBg" x1="3" y1="4" x2="27" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="badgeBg" x1="17" y1="2" x2="29" y2="14" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f59e0b"/>
+      <stop offset="1" stop-color="#d97706"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="1" width="32" height="30" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Reloj principal (Gestión del tiempo laboral) -->
+  <g filter="url(#shadow)">
+    <circle cx="15" cy="17" r="11" fill="url(#clockBg)" stroke="#ffffff" stroke-width="1.5"/>
+    <!-- Marcas horarias sutiles -->
+    <circle cx="15" cy="8" r="0.8" fill="#93c5fd"/>
+    <circle cx="6" cy="17" r="0.8" fill="#93c5fd"/>
+    <circle cx="15" cy="26" r="0.8" fill="#93c5fd"/>
+    <!-- Centro y manecillas -->
+    <path d="M15 10.5V17L19.5 19.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="15" cy="17" r="1.5" fill="#ffffff"/>
+
+    <!-- Insignia destacada de Horas Extras (+) -->
+    <circle cx="23" cy="9" r="6.5" fill="url(#badgeBg)" stroke="#ffffff" stroke-width="1.5"/>
+    <path d="M23 5.8V12.2M19.8 9H26.2" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
