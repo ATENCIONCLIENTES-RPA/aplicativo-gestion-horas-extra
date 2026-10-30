@@ -1,0 +1,24 @@
+{
+  "name": "aplicativo-gestion-horas-extra",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/payroll-engine.smoke.mjs",
+    "check": "npm run typecheck && npm test && npm run build",
+    "test:functional": "node tests/functional-cdp.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "25.0.3",
+    "typescript": "5.9.3",
+    "vite": "8.0.16"
+  }
+}

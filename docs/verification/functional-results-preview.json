@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-10-30T04:43:27.062Z",
+  "results": [
+    {
+      "name": "migrated",
+      "url": "http://127.0.0.1:4173/",
+      "loginReady": {
+        "title": "Aplicativo | Gestión de Horas Extras",
+        "authVisible": true,
+        "appHidden": true,
+        "cssRules": 3534,
+        "schemaChars": 204523
+      },
+      "navigation": {
+        "dashboard": true,
+        "requests": false,
+        "reports": true,
+        "adminQueue": true,
+        "auxilios": true,
+        "finance": true,
+        "employees": true,
+        "settings": true
+      },
+      "settingsChecks": {
+        "modalOpened": true,
+        "embeddedSqlChars": 204523
+      },
+      "requestModal": true,
+      "employeeFlow": {
+        "user": "Prueba Funcionario",
+        "requestsPage": true,
+        "modalOpened": true
+      },
+      "appVisible": true,
+      "user": "Prueba Administrador",
+      "runtimeErrors": []
+    }
+  ]
+}

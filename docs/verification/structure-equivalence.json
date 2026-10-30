@@ -1,0 +1,40 @@
+{
+  "staticBodySignatures": {
+    "original": 786,
+    "migrated": 786,
+    "identical": true
+  },
+  "ids": {
+    "identical": true,
+    "count": 143
+  },
+  "controls": {
+    "original": 99,
+    "migrated": 99
+  },
+  "forms": {
+    "original": 1,
+    "migrated": 1
+  },
+  "css": {
+    "originalSha256": "83af9a7a9aeae212b84353f03c7e79aa455df6a1dc125a466fe3791bf599a1bc",
+    "extractedSha256": "83af9a7a9aeae212b84353f03c7e79aa455df6a1dc125a466fe3791bf599a1bc",
+    "identical": true
+  },
+  "payrollEngine": {
+    "originalSha256": "cd46448811216359f18ae1bac4dfef698c08d81f2518a54f68cd0541abc7f940",
+    "extractedSha256": "cd46448811216359f18ae1bac4dfef698c08d81f2518a54f68cd0541abc7f940",
+    "identical": true
+  },
+  "configUx": {
+    "originalSha256": "a9a79cc66dd030c88ad38d0f59a2038fcfb555a2ec1b6619c16c007ab6d6d977",
+    "extractedSha256": "a9a79cc66dd030c88ad38d0f59a2038fcfb555a2ec1b6619c16c007ab6d6d977",
+    "identical": true
+  },
+  "sqlSchema": {
+    "originalSha256": "1e55d48c263b75c2b40a76fb22a82e55a5d12a17cab5e21ea9e8e89e14a4eec2",
+    "extractedSha256": "1e55d48c263b75c2b40a76fb22a82e55a5d12a17cab5e21ea9e8e89e14a4eec2",
+    "identical": true,
+    "chars": 204522
+  }
+}

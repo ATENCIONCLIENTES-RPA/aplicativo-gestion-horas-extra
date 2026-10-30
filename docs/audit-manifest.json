@@ -1,0 +1,37 @@
+{
+  "original": {
+    "file": "Aplicativo_Gestion_Horas_Extra.html",
+    "bytes": 1440706,
+    "sha256": "61b33e93eefd451799282ea73e237df03eb8ae569c6782f900856eb017005d10"
+  },
+  "extracted": {
+    "cssChars": 432264,
+    "schemaChars": 204524,
+    "payrollChars": 26183,
+    "appChars": 652121,
+    "configUxChars": 53971,
+    "logoBytes": 7068
+  },
+  "sourceSql": [
+    {
+      "file": "carga_directorio_soporte_clientes.sql",
+      "bytes": 10734,
+      "sha256": "943569a4cd2d9033794abb505e516a72fe0c2c9ec3ac376d13eb945ddf5988c9"
+    },
+    {
+      "file": "migracion_v10_notificaciones.sql",
+      "bytes": 986,
+      "sha256": "2dca9cbc2f62f2ed36504812043e981771936128c1a846680ab2d21a59f87542"
+    },
+    {
+      "file": "migracion_v7_usuarios_directorio.sql",
+      "bytes": 28170,
+      "sha256": "57ccf0f2d456bc93bd2e24f88d16cc80d5b9a8af37a745dee87bd5412e2bf292"
+    },
+    {
+      "file": "migracion_v8_recuperacion_contrasenas.sql",
+      "bytes": 7990,
+      "sha256": "c6cf04e8c317c1e98bc8f3ec767861b8f5dc59f3aa8ed3c9d672bd902c158720"
+    }
+  ]
+}

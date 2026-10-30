@@ -1,0 +1,11 @@
+dist/.vite/manifest.json 1052 bytes
+dist/_redirects 19 bytes
+dist/assets/app-Bte3ZKr6.js 505000 bytes
+dist/assets/config-ux-BsdhOsNL.js 49204 bytes
+dist/assets/essa-logo-D-hSVpnt.png 7068 bytes
+dist/assets/index-CXeyYneG.js 3919 bytes
+dist/assets/index-Dl2mMht5.css 465271 bytes
+dist/assets/payroll-engine-gqMl_Em5.js 19245 bytes
+dist/database/schema_completo.sql 205362 bytes
+dist/index.html 56233 bytes
+dist/staticwebapp.config.json 228 bytes
