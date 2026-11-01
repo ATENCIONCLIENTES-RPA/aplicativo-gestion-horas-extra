@@ -6,11 +6,16 @@ Todos los 43 funcionarios han sido creados en **Supabase Authentication**, confi
 
 ---
 
-## 1. Administrador del Sistema (`admin`)
+## 1. Administrador del Sistema con Doble Rol (`admin` / `employee`)
 
-| Funcionario | Cédula | Correo de Acceso | Contraseña Inicial | Rol |
+> [!IMPORTANT]
+> **Acceso con Doble Rol según la Contraseña:**
+> - **Contraseña de Sistemas (`admin`):** `AdminHoras2026*!` — Ingresa con acceso total administrativo, auditoría, parámetros, catálogos y gestión completa.
+> - **Contraseña de Funcionario (`employee`):** `REDACTED_PASSWORD` — Ingresa con rol exclusivo de Funcionario para registrar y consultar solicitudes de horas extras propias (sin acceso administrativo).
+
+| Funcionario | Cédula | Correo de Acceso | Contraseña Sistemas (`admin`) | Contraseña Funcionario (`employee`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **JAIME ARLEY RIZO MORALES** | 1096249782 | `jaime.rizo@essa.com.co` | `AdminHoras2026*!` | `admin` |
+| **JAIME ARLEY RIZO MORALES** | 1096249782 | `jaime.rizo@essa.com.co` | `AdminHoras2026*!` | `REDACTED_PASSWORD` |
 
 ---
 
@@ -22,11 +27,16 @@ Todos los 43 funcionarios han sido creados en **Supabase Authentication**, confi
 
 ---
 
-## 3. Rol Profesional (`professional`)
+## 3. Rol Profesional con Doble Rol (`professional` / `employee`)
 
-| Funcionario | Cédula | Correo de Acceso | Contraseña Inicial | Rol |
+> [!IMPORTANT]
+> **Acceso con Doble Rol según la Contraseña:**
+> - **Contraseña de Sistemas (`professional`):** `SistemasHoras2026*!` — Ingresa con rol de Profesional para validar solicitudes, revisar dependencias y reportes.
+> - **Contraseña de Funcionario (`employee`):** `REDACTED_PASSWORD` — Ingresa con rol exclusivo de Funcionario para registrar y consultar solicitudes de horas extras propias.
+
+| Funcionario | Cédula | Correo de Acceso | Contraseña Sistemas (`professional`) | Contraseña Funcionario (`employee`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **LAURA ANDREA BAEZ BAYONA** | 1098763659 | `laura.baez@essa.com.co` | `REDACTED_PASSWORD` | `professional` |
+| **LAURA ANDREA BAEZ BAYONA** | 1098763659 | `laura.baez@essa.com.co` | `SistemasHoras2026*!` | `REDACTED_PASSWORD` |
 
 ---
 

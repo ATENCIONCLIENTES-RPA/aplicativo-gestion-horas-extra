@@ -502,6 +502,15 @@
         async getSession(){return {data:{session:sessionObj()},error:null}},
         async getUser(){const s=sessionObj();return {data:{user:s?s.user:null},error:null}},
         onAuthStateChange(cb){listeners.add(cb);return {data:{subscription:{unsubscribe(){listeners.delete(cb)}}}}},
+        async setSession(session){
+          if(session?.user?.id){
+            try{localStorage.setItem(SES_KEY,session.user.id)}catch(_){}
+            const s=sessionObj();
+            setTimeout(()=>emit('SIGNED_IN',s),0);
+            return {data:{session:s,user:s?s.user:null},error:null};
+          }
+          return {data:{session:null,user:null},error:{message:'Invalid session'}};
+        },
         async signInWithPassword({email,password}){
           const u=db.auth_users.find(x=>x.email.toLowerCase()===String(email||'').trim().toLowerCase());
           if(!u||u.password!==password)return {data:{user:null,session:null},error:{name:'AuthApiError',status:400,message:'Invalid login credentials'}};
@@ -535,8 +544,34 @@
         };
       }};
 
-      // ---------- Funciones de borde (admin-set-password) ----------
+      // ---------- Funciones de borde (admin-set-password y dual-login) ----------
       const functions={async invoke(name,{body}={}){
+        if(name==='dual-login'){
+          const cleanEmail=String(body?.email||'').trim().toLowerCase(),cleanPw=String(body?.password||'');
+          const u=db.auth_users.find(x=>x.email.toLowerCase()===cleanEmail);
+          const p=u?db.profiles.find(x=>x.id===u.id):null;
+          if(!u||!p)return {data:null,error:{message:'Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo.'}};
+          const isDual=cleanEmail.includes('jaime.rizo')||cleanEmail.includes('laura.baez');
+          if(isDual&&cleanPw==='REDACTED_PASSWORD'){
+            p.role='employee';
+            u.last_sign_in_at=nowISO();
+            persist();
+            try{localStorage.setItem(SES_KEY,u.id)}catch(_){}
+            const s=sessionObj();
+            setTimeout(()=>emit('SIGNED_IN',s),0);
+            return {data:{session:s,user:s.user,role:'employee',mode:'funcionario'},error:null};
+          }
+          if(u.password===cleanPw){
+            if(isDual)p.role=cleanEmail.includes('jaime.rizo')?'admin':'professional';
+            u.last_sign_in_at=nowISO();
+            persist();
+            try{localStorage.setItem(SES_KEY,u.id)}catch(_){}
+            const s=sessionObj();
+            setTimeout(()=>emit('SIGNED_IN',s),0);
+            return {data:{session:s,user:s.user,role:p.role,mode:isDual?'sistemas':'standard'},error:null};
+          }
+          return {data:null,error:{message:'Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo.'}};
+        }
         if(name!=='admin-set-password')return {data:null,error:{message:'Función no disponible en modo local'}};
         const me=meProfile();if(!me||me.role!=='admin')return {data:{error:'Se requieren permisos de administrador.'},error:null};
         const u=db.auth_users.find(x=>x.id===body?.user_id),p=db.profiles.find(x=>x.id===body?.user_id);
@@ -1577,11 +1612,34 @@ const PDF_W={r:[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
       if(!state.client)return authFail('El aplicativo aún no está conectado a Supabase. Un administrador debe completar la configuración para que puedas ingresar.',null,{action:{label:'Ver configuración',run:openSetup}});
       const lockWait=loginGateWait();
       if(lockWait)return authFail(`Demasiados intentos fallidos. Espera ${lockWait} s o recupera tu contraseña con «¿Olvidaste tu contraseña?».`,'password');
-      authBegin(e.submitter);let result;
-      try{result=await state.client.auth.signInWithPassword({email,password})}catch(err){result={error:err}}
+      authBegin(e.submitter);
+      let result=null,dualMode=null;
+      // 1. Invocar función de autenticación con doble rol si está disponible
+      try{
+        const fnRes=await state.client.functions.invoke('dual-login',{body:{email,password}});
+        if(fnRes.data?.session){
+          const {error:setErr}=await state.client.auth.setSession(fnRes.data.session);
+          if(!setErr){
+            result={data:{user:fnRes.data.user||fnRes.data.session.user,session:fnRes.data.session}};
+            dualMode=fnRes.data.mode;
+          }
+        }else if(fnRes.data?.error&&!/not found|función no disponible|functions_relay_error/i.test(fnRes.data.error)){
+          result={error:{message:fnRes.data.error}};
+        }
+      }catch(_){
+        // Si la función de borde no está desplegada o responde con error de red, continuar con inicio directo
+      }
+      // 2. Si la función de borde no se ejecutó, intentar inicio directo en Supabase Auth
+      if(!result){
+        try{result=await state.client.auth.signInWithPassword({email,password})}catch(err){result={error:err}}
+      }
       if(result.error){authEnd();if(!isNetworkError(result.error))loginGateFail();return authFail(authErrorText(result.error),'password')}
       loginGateReset();
-      await authFinish(()=>enterApp(result.data.user));
+      await authFinish(async()=>{
+        await enterApp(result.data.user);
+        if(dualMode==='funcionario')toast('Ingresaste en modo Funcionario (gestión de solicitudes propias)','info');
+        else if(dualMode==='sistemas')toast('Ingresaste en modo Sistemas (gestión administrativa completa)','info');
+      });
     }
     // ---------- v8 · Restablecimiento y cambio de contraseñas (sin envío de correos) ----------
     // Las contraseñas las gestiona Supabase Auth (hash bcrypt en el servidor): el aplicativo no las guarda, no las registra y no las
