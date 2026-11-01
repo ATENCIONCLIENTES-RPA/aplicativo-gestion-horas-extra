@@ -480,6 +480,22 @@
           const me=meProfile();if(!me)fail('Sesión no válida');
           if(!['password_changed','password_recovery_completed','password_change_reauth_failed'].includes(p_event))fail('Evento no válido');
           addAudit(me.id,p_event,'profiles',me.id,undefined,{});return null;
+        },
+        change_own_password({p_current,p_next}){
+          const me=meProfile();if(!me)fail('Sesión no válida');
+          const u=db.auth_users.find(x=>x.id===me.id);if(!u)fail('Usuario no encontrado');
+          const isDual=u.email.toLowerCase().includes('jaime.rizo')||u.email.toLowerCase().includes('laura.baez');
+          if(isDual&&me.role==='employee'){
+            const curEmp=u._empPassword||'REDACTED_PASSWORD';
+            if(p_current!==curEmp)fail('La contraseña actual no es correcta.');
+            u._empPassword=p_next;
+            addAudit(me.id,'dual_employee_password_changed','profiles',me.id,undefined,{role:'employee'});
+            return {ok:true,target:'employee'};
+          }
+          if(u.password!==p_current)fail('La contraseña actual no es correcta.');
+          u.password=p_next;
+          addAudit(me.id,'password_changed','profiles',me.id,undefined,{role:me.role});
+          return {ok:true,target:'systems'};
         }
       };
       function notifyReviewers(r){
@@ -1734,17 +1750,53 @@ const PDF_W={r:[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
     // Cambio voluntario desde el perfil: exige la contraseña actual (se verifica iniciando sesión de nuevo), aplica la política y cierra las demás sesiones.
     function pwChangeGate(){let g;try{g=JSON.parse(sessionStorage.getItem('essa_pw_change_gate')||'{}')}catch(_){g={}}return {g,wait:Math.max(0,Math.ceil(((g.until||0)-Date.now())/1000))}}
     async function changeOwnPassword(current,next){
-      const email=state.user?.email||state.profile?.email,gate=pwChangeGate();
+      const gate=pwChangeGate();
       if(gate.wait)throw new Error(`Demasiados intentos con la contraseña actual. Espera ${gate.wait} s.`);
-      const re=await state.client.auth.signInWithPassword({email,password:current});
-      if(re.error){
-        const n=(gate.g.n||0)+1;try{sessionStorage.setItem('essa_pw_change_gate',JSON.stringify({n,until:n%5===0?Date.now()+60000:0}))}catch(_){}
-        await logPasswordEvent('password_change_reauth_failed');
-        throw new Error(/invalid login/i.test(re.error.message||'')?'La contraseña actual no es correcta.':pwdErrorText(re.error));
+
+      let changed=false;
+      // 1. Intentar cambio mediante RPC segura en base de datos (valida con crypt y maneja rol dual o estándar)
+      try{
+        const {data,error}=await state.client.rpc('change_own_password',{p_current:current,p_next:next});
+        if(!error&&data?.ok){
+          changed=true;
+        }else if(error&&/contraseña actual no es correcta/i.test(error.message||'')){
+          const n=(gate.g.n||0)+1;try{sessionStorage.setItem('essa_pw_change_gate',JSON.stringify({n,until:n%5===0?Date.now()+60000:0}))}catch(_){}
+          await logPasswordEvent('password_change_reauth_failed');
+          throw new Error('La contraseña actual no es correcta.');
+        }
+      }catch(rpcErr){
+        if(/contraseña actual no es correcta/i.test(rpcErr.message||''))throw rpcErr;
+        // Si la RPC no está instalada aún en Supabase, continuar con fallback
       }
+
+      // 2. Si la RPC no se ejecutó, validar contra dual-login o Supabase Auth
+      if(!changed){
+        const email=state.user?.email||state.profile?.email;
+        let re=null;
+        try{
+          const fnRes=await state.client.functions.invoke('dual-login',{body:{email,password:current}});
+          if(fnRes.data?.session){
+            re={data:fnRes.data.session,error:null};
+          }else if(fnRes.data?.error){
+            re={error:{message:fnRes.data.error}};
+          }
+        }catch(_){}
+
+        if(!re){
+          try{re=await state.client.auth.signInWithPassword({email,password:current})}catch(err){re={error:err}}
+        }
+
+        if(re?.error){
+          const n=(gate.g.n||0)+1;try{sessionStorage.setItem('essa_pw_change_gate',JSON.stringify({n,until:n%5===0?Date.now()+60000:0}))}catch(_){}
+          await logPasswordEvent('password_change_reauth_failed');
+          throw new Error(/invalid login|correo o contraseña incorrectos/i.test(re.error.message||'')?'La contraseña actual no es correcta.':pwdErrorText(re.error));
+        }
+
+        const up=await state.client.auth.updateUser({password:next,data:{must_change_password:false}});
+        if(up.error)throw up.error;
+      }
+
       try{sessionStorage.removeItem('essa_pw_change_gate')}catch(_){}
-      const up=await state.client.auth.updateUser({password:next,data:{must_change_password:false}});
-      if(up.error)throw up.error;
       await logPasswordEvent('password_changed');
       try{await state.client.auth.signOut({scope:'others'})}catch(_){}
     }

@@ -25,6 +25,235 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => ({}));
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // =========================================================================
+    // FLUJO 1: CAMBIO DE CONTRASEÑA VOLUNTARIO (action === 'change-password')
+    // =========================================================================
+    if (body?.action === 'change-password') {
+      const authHeader = req.headers.get('Authorization') || '';
+      const jwt = authHeader.replace(/^Bearer\s+/i, '');
+
+      if (!jwt) {
+        return new Response(JSON.stringify({ error: 'No autorizado: falta sesión activa.' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: { user: caller }, error: callerErr } = await supabaseAdmin.auth.getUser(jwt);
+      if (callerErr || !caller || !caller.email) {
+        return new Response(JSON.stringify({ error: 'Sesión no válida o expirada. Inicia sesión de nuevo.' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const currentPw = String(body?.current || '');
+      const nextPw = String(body?.next || '');
+      const activeRole = String(body?.active_role || '');
+
+      if (!currentPw) {
+        return new Response(JSON.stringify({ error: 'Escribe tu contraseña actual.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!nextPw || nextPw.length < 8) {
+        return new Response(JSON.stringify({ error: 'La nueva contraseña debe tener al menos 8 caracteres.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // 1. Verificar si el usuario tiene credencial de rol dual (Jaime Rizo / Laura Báez)
+      const { data: dualCred } = await supabaseAdmin
+        .from('dual_role_credentials')
+        .select('user_id, employee_password_hash, systems_role')
+        .eq('user_id', caller.id)
+        .maybeSingle();
+
+      if (dualCred) {
+        // Verificar si la contraseña actual coincide con el hash de funcionario (bcrypt)
+        const isEmployeeCurrent = bcrypt.compareSync(currentPw, dualCred.employee_password_hash);
+
+        // Si el usuario está en modo funcionario o la clave actual coincide con la de funcionario
+        if (isEmployeeCurrent || activeRole === 'employee') {
+          if (isEmployeeCurrent) {
+            // Actualizar la contraseña de funcionario en dual_role_credentials
+            const newEmpHash = bcrypt.hashSync(nextPw, 10);
+            const { error: updEmpErr } = await supabaseAdmin
+              .from('dual_role_credentials')
+              .update({
+                employee_password_hash: newEmpHash,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', caller.id);
+
+            if (updEmpErr) throw updEmpErr;
+
+            await supabaseAdmin.from('audit_log').insert({
+              actor_id: caller.id,
+              action: 'dual_employee_password_changed',
+              entity_type: 'profiles',
+              entity_id: caller.id,
+              new_data: { role: 'employee' }
+            });
+
+            return new Response(JSON.stringify({
+              ok: true,
+              target: 'employee',
+              message: 'Contraseña de funcionario actualizada correctamente.'
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          // Si estaba en modo funcionario pero la clave actual no coincidió con funcionario, verificar si ingresó la de sistemas
+          const clientVerify = createClient(supabaseUrl, supabaseAnonKey || supabaseServiceKey);
+          const { error: sysErr } = await clientVerify.auth.signInWithPassword({
+            email: caller.email,
+            password: currentPw,
+          });
+
+          if (sysErr) {
+            return new Response(JSON.stringify({ error: 'La contraseña actual no es correcta.' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+
+          // Si coincidió con la de sistemas, actualizar la de sistemas
+          const { error: updSysErr } = await supabaseAdmin.auth.admin.updateUserById(caller.id, {
+            password: nextPw,
+            user_metadata: { must_change_password: false }
+          });
+          if (updSysErr) throw updSysErr;
+
+          await supabaseAdmin.from('audit_log').insert({
+            actor_id: caller.id,
+            action: 'systems_password_changed',
+            entity_type: 'profiles',
+            entity_id: caller.id,
+            new_data: { role: dualCred.systems_role }
+          });
+
+          return new Response(JSON.stringify({
+            ok: true,
+            target: 'systems',
+            message: 'Contraseña de sistemas actualizada correctamente.'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Si está en modo sistemas, probar primero la de sistemas en GoTrue
+        const clientVerify = createClient(supabaseUrl, supabaseAnonKey || supabaseServiceKey);
+        const { error: sysErr } = await clientVerify.auth.signInWithPassword({
+          email: caller.email,
+          password: currentPw,
+        });
+
+        if (!sysErr) {
+          const { error: updSysErr } = await supabaseAdmin.auth.admin.updateUserById(caller.id, {
+            password: nextPw,
+            user_metadata: { must_change_password: false }
+          });
+          if (updSysErr) throw updSysErr;
+
+          await supabaseAdmin.from('audit_log').insert({
+            actor_id: caller.id,
+            action: 'systems_password_changed',
+            entity_type: 'profiles',
+            entity_id: caller.id,
+            new_data: { role: dualCred.systems_role }
+          });
+
+          return new Response(JSON.stringify({
+            ok: true,
+            target: 'systems',
+            message: 'Contraseña de sistemas actualizada correctamente.'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Si no coincidió con sistemas, verificar si coincidió con funcionario
+        if (isEmployeeCurrent) {
+          const newEmpHash = bcrypt.hashSync(nextPw, 10);
+          const { error: updEmpErr } = await supabaseAdmin
+            .from('dual_role_credentials')
+            .update({
+              employee_password_hash: newEmpHash,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', caller.id);
+
+          if (updEmpErr) throw updEmpErr;
+
+          return new Response(JSON.stringify({
+            ok: true,
+            target: 'employee',
+            message: 'Contraseña de funcionario actualizada correctamente.'
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        return new Response(JSON.stringify({ error: 'La contraseña actual no es correcta.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // 2. Para usuarios regulares (no rol dual): verificar contraseña actual con GoTrue
+      const clientAuth = createClient(supabaseUrl, supabaseAnonKey || supabaseServiceKey);
+      const { error: verifyErr } = await clientAuth.auth.signInWithPassword({
+        email: caller.email,
+        password: currentPw,
+      });
+
+      if (verifyErr) {
+        return new Response(JSON.stringify({ error: 'La contraseña actual no es correcta.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Actualizar contraseña en Supabase Auth
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(caller.id, {
+        password: nextPw,
+        user_metadata: { must_change_password: false }
+      });
+
+      if (updateErr) throw updateErr;
+
+      await supabaseAdmin.from('audit_log').insert({
+        actor_id: caller.id,
+        action: 'password_changed',
+        entity_type: 'profiles',
+        entity_id: caller.id,
+        new_data: { role: 'standard' }
+      });
+
+      return new Response(JSON.stringify({
+        ok: true,
+        target: 'standard',
+        message: 'Contraseña actualizada correctamente.'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // =========================================================================
+    // FLUJO 2: INICIO DE SESIÓN CON DOBLE ROL (LOGIN)
+    // =========================================================================
     const cleanEmail = String(body?.email || '').trim().toLowerCase();
     const cleanPassword = String(body?.password || '');
 
@@ -34,8 +263,6 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Verificar si el usuario existe y su estado en el sistema
     const { data: profile, error: profileErr } = await supabaseAdmin
