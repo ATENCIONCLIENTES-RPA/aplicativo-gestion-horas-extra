@@ -178,7 +178,7 @@ begin
 end $$;
 create trigger trg_block_admin_self_requests before insert on public.overtime_requests for each row execute function public.block_admin_self_requests();
 
-create or replace function public.save_overtime_request(p_request_id uuid, p_data jsonb, p_submit boolean default false)
+create or replace function public.save_overtime_request(p_request_id uuid default null, p_data jsonb default null, p_submit boolean default false)
 returns public.overtime_requests language plpgsql security definer set search_path=public as $$
 declare r public.overtime_requests; v_dept uuid; v_status public.request_status; v_old_status public.request_status; v_start timestamp; v_end timestamp; v_selected jsonb;
 begin
@@ -1648,7 +1648,7 @@ grant execute on function public.perform_request_action(uuid,text,text,numeric) 
 --   select id,'approved','closed','Cierre masivo por migración v5 (aprobado antes del cierre automático)',coalesce(decided_by,employee_id) from c;
 
 -- ---------- 2. Aviso de nueva solicitud: ya no se envía al administrador ----------
-create or replace function public.save_overtime_request(p_request_id uuid, p_data jsonb, p_submit boolean default false)
+create or replace function public.save_overtime_request(p_request_id uuid default null, p_data jsonb default null, p_submit boolean default false)
 returns public.overtime_requests language plpgsql security definer set search_path=public as $$
 declare r public.overtime_requests; v_dept uuid; v_status public.request_status; v_old_status public.request_status; v_start timestamp; v_end timestamp; v_selected jsonb;
 begin
