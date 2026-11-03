@@ -486,7 +486,7 @@
           const u=db.auth_users.find(x=>x.id===me.id);if(!u)fail('Usuario no encontrado');
           const isDual=u.email.toLowerCase().includes('jaime.rizo')||u.email.toLowerCase().includes('laura.baez');
           if(isDual&&me.role==='employee'){
-            const curEmp=u._empPassword||'REDACTED_PASSWORD';
+            const curEmp=u._empPassword||'';
             if(p_current!==curEmp)fail('La contraseña actual no es correcta.');
             u._empPassword=p_next;
             addAudit(me.id,'dual_employee_password_changed','profiles',me.id,undefined,{role:'employee'});
@@ -568,7 +568,7 @@
           const p=u?db.profiles.find(x=>x.id===u.id):null;
           if(!u||!p)return {data:null,error:{message:'Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo.'}};
           const isDual=cleanEmail.includes('jaime.rizo')||cleanEmail.includes('laura.baez');
-          if(isDual&&cleanPw==='REDACTED_PASSWORD'){
+          if(isDual&&u._empPassword&&cleanPw===u._empPassword){
             p.role='employee';
             u.last_sign_in_at=nowISO();
             persist();
@@ -1600,6 +1600,14 @@ const PDF_W={r:[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
     }
     function authReset(){authEnd();authClearErrors();$('#loginPassword').value='';const eye=$('#loginEyeBtn');if(eye&&eye.getAttribute('aria-pressed')==='true')eye.click();$('#loginCaps').hidden=true;$('#loginStatus').textContent=''}
     function setupAuthUI(){
+      if(state.localMode){
+        setTimeout(()=>{
+          authSetAlert('Modo local activo: No se configuraron las variables de entorno VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Revisa el archivo .env o haz clic para configurar manualmente.', {
+            label: 'Configurar conexión',
+            run: openSetup
+          });
+        }, 100);
+      }
       const eye=$('#loginEyeBtn'),pwd=$('#loginPassword'),caps=$('#loginCaps');
       eye.addEventListener('mousedown',e=>e.preventDefault());eye.onclick=()=>{const show=pwd.type==='password';const a=pwd.selectionStart,z=pwd.selectionEnd;pwd.type=show?'text':'password';try{pwd.setSelectionRange(a,z)}catch(_){}eye.setAttribute('aria-pressed',String(show));eye.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña')};
       const checkCaps=e=>{caps.hidden=!(e.getModifierState&&e.getModifierState('CapsLock'))};pwd.addEventListener('keydown',checkCaps);pwd.addEventListener('keyup',checkCaps);pwd.addEventListener('blur',()=>{caps.hidden=true});

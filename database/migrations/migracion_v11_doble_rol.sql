@@ -156,15 +156,16 @@ revoke all on function public.set_active_role(uuid, text) from public, anon, aut
 grant execute on function public.set_active_role(uuid, text) to service_role;
 
 -- ---------- 4. Carga inicial de credenciales de rol dual para Jaime Rizo y Laura Báez ----------
--- Contraseña de funcionario por defecto: REDACTED_PASSWORD
+-- Las contraseñas se gestionan mediante el panel administrativo o el flujo de restablecimiento seguro.
+-- No se almacenan contraseñas en texto plano ni predecibles en los archivos de migración.
 do $$
 declare
   v_jaime_id uuid;
   v_laura_id uuid;
   v_default_emp_hash text;
 begin
-  -- Generar hash bcrypt para la contraseña de funcionario ('REDACTED_PASSWORD')
-  v_default_emp_hash := extensions.crypt('REDACTED_PASSWORD', extensions.gen_salt('bf', 10));
+  -- Generar hash bcrypt temporal seguro (aleatorio criptográfico)
+  v_default_emp_hash := extensions.crypt(encode(extensions.gen_random_bytes(24), 'hex'), extensions.gen_salt('bf', 10));
 
   -- Buscar IDs de Jaime Rizo y Laura Báez
   select id into v_jaime_id from public.profiles where lower(email) = 'jaime.rizo@essa.com.co';
@@ -173,18 +174,12 @@ begin
   if v_jaime_id is not null then
     insert into public.dual_role_credentials (user_id, employee_password_hash, systems_role, updated_at)
     values (v_jaime_id, v_default_emp_hash, 'admin'::public.app_role, now())
-    on conflict (user_id) do update set
-      employee_password_hash = excluded.employee_password_hash,
-      systems_role = excluded.systems_role,
-      updated_at = now();
+    on conflict (user_id) do nothing;
   end if;
 
   if v_laura_id is not null then
     insert into public.dual_role_credentials (user_id, employee_password_hash, systems_role, updated_at)
     values (v_laura_id, v_default_emp_hash, 'professional'::public.app_role, now())
-    on conflict (user_id) do update set
-      employee_password_hash = excluded.employee_password_hash,
-      systems_role = excluded.systems_role,
-      updated_at = now();
+    on conflict (user_id) do nothing;
   end if;
 end $$;
